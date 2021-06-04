@@ -1,3 +1,9 @@
+# IDE files
+.*
+
+# CMake build
+/build
+
 # Prerequisites
 *.d
 
