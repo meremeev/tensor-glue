@@ -2,6 +2,7 @@
 #define TGL_MANAGED_TENSOR_H
 
 #include <cstdint>
+#include <sstream>
 #include <cuda_runtime.h>
 
 #include "common.h"
@@ -15,8 +16,7 @@ class ManagedTensor: public Tensor<T> {
 public:
     // ToDo: provide ctor with device selection and kernel launch specification
     // ToDo: provide automatic device selection for multi-GPU platform
-    ManagedTensor(const TensorDims &dims, bool set_to_zero = false)
-    noexcept(false) :
+    ManagedTensor(const TensorDims &dims, bool set_to_zero = false) noexcept(false) :
             dims_(dims), nelem_(1), data_size_(0), grid_dims_(0), block_dims_(0) {
 
         for (uint64_t dim_size : dims_) {
@@ -80,16 +80,21 @@ public:
     }
 
 private:
-    inline void check_dims(const TensorDims &other_dims) {
+    void check_dims(const TensorDims &other_dims) {
         if (dims_.size() != other_dims.size()) {
-            throw tensor_size_mismatch("Tensors have different number of dimensions");
+            std::ostringstream ss;
+            ss << "Tensors have different number of dimensions: " << dims_.size() << "!="
+                    << other_dims.size();
+            throw tensor_size_mismatch(ss.str());
         }
         for (size_t i = 0; i < dims_.size(); ++i) {
             if (dims_[i] != other_dims[i]) {
-                throw tensor_size_mismatch("Tensors have different dimensions");
+                std::ostringstream ss;
+                ss << "Tensors have different size of dimension " << i << ": " << dims_[i] << "!="
+                        << other_dims[i];
+                throw tensor_size_mismatch(ss.str());
             }
         }
-
     }
     TensorDims dims_;
     int64_t nelem_;

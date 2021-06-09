@@ -1,6 +1,7 @@
 set(_lib_name "tensor-glue")
 
 add_library(${_lib_name} SHARED 
+	src/tensor_factory.cu
 	src/utils.cpp
 )
 

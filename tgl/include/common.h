@@ -2,6 +2,7 @@
 #define TGL_COMMON_H
 
 #include <stdexcept>
+#include <string>
 #include <cuda_runtime.h>
 
 namespace tgl {
@@ -15,7 +16,10 @@ public:
 
 class tensor_size_mismatch: public std::runtime_error {
 public:
-    explicit tensor_size_mismatch(const char *msg) :
+    explicit tensor_size_mismatch(const std::string& msg) :
+            std::runtime_error(msg) {
+    }
+    explicit tensor_size_mismatch(const char* msg) :
             std::runtime_error(msg) {
     }
 };

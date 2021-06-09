@@ -9,4 +9,11 @@ cd build
 cmake ..
 cmake --build .
 
-./tests/test_runner
+printf "\n-- Platform info\n"
+./tests/platform_info
+
+printf "\n-- Header-only library test\n"
+./tests/header_only_lib_test
+
+printf "\n-- Binary library test\n"
+./tests/binary_lib_test

@@ -1,8 +1,6 @@
 #include <catch2/catch_all.hpp>
 #include <iostream>
 
-#include <cuda_runtime.h>
-
 #include <managed_tensor.cuh>
 
 using namespace tgl;

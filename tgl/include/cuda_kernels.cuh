@@ -2,6 +2,7 @@
 #define TGL_CUDA_KERNELS_H
 
 #include <cstdio>
+#include <cassert>
 
 #include "common.h"
 
