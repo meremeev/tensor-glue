@@ -4,7 +4,7 @@ Generic tensor library is intended to bridge a gap between CPU and GPU computati
 
 Currently the library provides only one implementation based on CUDA Unified Memory - *ManagedTensor<T>* which provide smooth synchronization across GPU and CPU domains and across multiple GPU devices.
 
-Supported data types: *int8*, *int32*, *int6*, *float*, *double*.
+Supported data types: *int8*, *int64*, *float*, *double*.
 
 ManageTensor implementation requires:
 - 64-bit host application.

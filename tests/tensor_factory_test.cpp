@@ -14,14 +14,6 @@ TEST_CASE( "Create int8 tensor" ) {
     REQUIRE(tensor.size() == 72);
 }
 
-TEST_CASE( "Create int32 tensor" ) {
-    Tensor<std::int32_t> &tensor = *new_int32_tensor( { 2, 3, 3, 4 });
-    REQUIRE(tensor.ndims() == 4);
-    REQUIRE(tensor.size(1) == 3);
-    REQUIRE(tensor.size(3) == 4);
-    REQUIRE(tensor.size() == 72);
-}
-
 TEST_CASE( "Create int64 tensor" ) {
     Tensor<std::int64_t> &tensor = *new_int64_tensor( { 2, 3, 3, 4 });
     REQUIRE(tensor.ndims() == 4);
