@@ -16,15 +16,12 @@ __global__ void scalar_op_kernel(T *data, T literal, int64_t nelem) {
     assert(gridDim.y == 1 && gridDim.z == 1);
     assert(blockDim.y == 1 && blockDim.z == 1);
 
-    //ToDo: fetch to shared memory
-    int64_t N = ceilf(nelem / static_cast<float>(gridDim.x * blockDim.x));
-    int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x) * N;
-    int64_t stop_idx = min(idx + N, nelem);
-    data += idx;
-    while (idx < stop_idx) {
-        assert(idx < stop_idx);
-        op(data++, literal);
-        ++idx;
+    int64_t stride = gridDim.x * blockDim.x;
+    int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    while (idx < nelem) {
+        op(data + idx, literal);
+        idx += stride;
     }
 }
 
@@ -68,5 +65,4 @@ void launch_mult_scalar_kernel(T *data, T literal, int64_t data_size, dim3 &grid
 }
 
 }
-
 #endif /* TGL_TENSOR_SCALAR_OPS_H */

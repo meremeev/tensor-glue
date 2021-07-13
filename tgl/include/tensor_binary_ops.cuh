@@ -16,16 +16,12 @@ __global__ void binary_op_kernel(T *data, U *other_data, int64_t nelem) {
     assert(gridDim.y == 1 && gridDim.z == 1);
     assert(blockDim.y == 1 && blockDim.z == 1);
 
-    //ToDo: fetch to shared memory
-    int64_t N = ceilf(nelem / static_cast<float>(gridDim.x * blockDim.x));
-    int64_t idx = (blockIdx.x * blockDim.x + threadIdx.x) * N;
-    int64_t stop_idx = min(idx + N, nelem);
-    data += idx;
-    other_data += idx;
-    while (idx < stop_idx) {
-        assert(idx < stop_idx);
-        op(data++, other_data++);
-        ++idx;
+    int64_t stride = gridDim.x * blockDim.x;
+    int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    while (idx < nelem) {
+        op(data + idx, other_data + idx);
+        idx += stride;
     }
 }
 

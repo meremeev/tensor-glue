@@ -2,15 +2,18 @@
 #define TGL_MANAGED_TENSOR_H
 
 #include <cstdint>
+#include <iostream>
 #include <sstream>
 #include <cuda_runtime.h>
 
 #include "common.h"
 #include "tensor.h"
 #include "tensor_scalar_ops.cuh"
+#include "tensor_unary_ops.cuh"
 #include "tensor_binary_ops.cuh"
 
 namespace tgl {
+
 
 template<typename T>
 class ManagedTensor: public Tensor<T> {
@@ -30,8 +33,8 @@ public:
             check_cuda_error(cudaMemset(data_, 0, data_size_));
         }
         // ToDo: define based on device properties and data size
-        grid_dims_ = 128;
-        block_dims_ = 256;
+        grid_dims_ = 12;
+        block_dims_ = 64;
         check_cuda_error(cudaStreamCreate(&stream_));
     }
     virtual ~ManagedTensor() noexcept(false) {

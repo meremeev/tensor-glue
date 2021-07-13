@@ -5,6 +5,7 @@
 
 using namespace tgl;
 
+
 TEST_CASE( "Tensor creation" ) {
     ManagedTensor<float> tensor( { 2, 3, 3, 4 }, true);
     REQUIRE(tensor.ndims() == 4);
@@ -30,7 +31,7 @@ TEST_CASE( "Fill tensor" ) {
 }
 
 TEST_CASE( "Add value to tensor" ) {
-    ManagedTensor<float> tensor( { 20, 30 });
+    ManagedTensor<float> tensor( { 200, 300 });
     tensor.fill(2.0);
     tensor.add(3L);
     tensor.add(1.0F);
@@ -44,9 +45,9 @@ TEST_CASE( "Add value to tensor" ) {
 }
 
 TEST_CASE( "Add tensors (same type)" ) {
-    ManagedTensor<float> tensor1( { 20, 30 });
+    ManagedTensor<float> tensor1( { 200, 300 });
     tensor1.fill(2.0);
-    ManagedTensor<float> tensor2( { 20, 30 });
+    ManagedTensor<float> tensor2( { 200, 300 });
     tensor2.fill(8.0);
     tensor1.add(tensor2);
     tensor1.sync();
@@ -78,7 +79,7 @@ TEST_CASE( "Add tensors (different types)" ) {
 }
 
 TEST_CASE( "Multiply tensor by value" ) {
-    ManagedTensor<float> tensor( { 20, 30 });
+    ManagedTensor<float> tensor( { 200, 300 });
     tensor.fill(2.0);
     tensor.mult(5L);
     tensor.mult(0.5F);
