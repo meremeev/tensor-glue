@@ -26,6 +26,7 @@ public:
     virtual const T* data() const = 0;
     virtual T* data() = 0;
     virtual void fill(T value) = 0;
+    virtual void fill_if_zero(T value) = 0;
     virtual void add(T value) = 0;
     virtual void add(Tensor<std::int8_t> &other) = 0;
     virtual void add(Tensor<std::int64_t> &other) = 0;
@@ -36,12 +37,11 @@ public:
     virtual void mult(Tensor<std::int64_t> &other) = 0;
     virtual void mult(Tensor<float> &other) = 0;
     virtual void mult(Tensor<double> &other) = 0;
+    virtual void neg() = 0;
+    virtual void recip() = 0;
     virtual void sync() = 0;
 
 protected:
-    Tensor() = default;
-    Tensor(const Tensor &other) = delete;
-    Tensor(Tensor &&other) = delete;
     Tensor& operator=(Tensor &&other) = delete;
     Tensor& operator=(const Tensor &other) = delete;
 

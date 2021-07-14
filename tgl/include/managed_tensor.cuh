@@ -35,11 +35,28 @@ public:
         block_dims_ = 64;
         check_cuda_error(cudaStreamCreate(&stream_));
     }
+
+    ManagedTensor(const TensorDims &dims, T *data) noexcept(false) :
+            ManagedTensor(dims, false) {
+
+        if (data) {
+            check_cuda_error(cudaMemcpy(data_, data, data_size_, cudaMemcpyHostToDevice));
+        } else {
+            throw std::runtime_error("Can not copy data from null pointer");
+        }
+    }
+
+    explicit ManagedTensor(const ManagedTensor &other) noexcept(false) :
+            ManagedTensor(other.dims_, false) {
+
+        check_cuda_error(cudaMemcpy(data_, other.data_, data_size_, cudaMemcpyDefault));
+    }
+
     virtual ~ManagedTensor() noexcept(false) {
         check_cuda_error(cudaFree(data_));
         check_cuda_error(cudaStreamDestroy(stream_));
     }
-    ManagedTensor(const ManagedTensor &other) = delete;
+
     ManagedTensor(ManagedTensor &&other) = delete;
     ManagedTensor& operator=(const ManagedTensor &other) = delete;
     ManagedTensor& operator=(ManagedTensor &&other) = delete;
@@ -65,6 +82,9 @@ public:
     // Scalar operations
     void fill(T value) override {
         launch_kernel<set_val_op<T>>(value);
+    }
+    void fill_if_zero(T value) override {
+        launch_kernel<set_if_zero_op<T>>(value);
     }
     void add(T value) override {
         launch_kernel<add_scalar_op<T>>(value);
@@ -98,8 +118,12 @@ public:
         launch_kernel<double, mult_op<T, double>>(other);
     }
     // Unary operations
-
-
+    void neg() override {
+        launch_kernel<neg_op<T>>();
+    }
+    void recip() override {
+        launch_kernel<recip_op<T>>();
+    }
     void sync() override {
         check_cuda_error(cudaStreamSynchronize(stream_));
     }
@@ -117,10 +141,16 @@ private:
         if (nelem_ != other.size()) {
             std::ostringstream ss;
             ss << "Tensors have different number of elements: " << nelem_ << " != " << other.size();
-            throw  std::runtime_error(ss.str());
+            throw std::runtime_error(ss.str());
         }
         other.sync();
         binary_op_kernel<T, U, op> <<<grid_dims_, block_dims_, 0, stream_>>>(data_, other.data(), nelem_);
+        check_cuda_error();
+    }
+
+    template<unary_op<T> op>
+    void launch_kernel() {
+        unary_op_kernel<T, op> <<<grid_dims_, block_dims_, 0, stream_>>>(data_, nelem_);
         check_cuda_error();
     }
 

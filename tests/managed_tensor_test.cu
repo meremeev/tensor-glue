@@ -6,7 +6,7 @@
 using namespace tgl;
 
 
-TEST_CASE( "Tensor creation" ) {
+TEST_CASE( "Create tensor" ) {
     ManagedTensor<float> tensor( { 2, 3, 3, 4 }, true);
     REQUIRE(tensor.ndims() == 4);
     REQUIRE(tensor.size(1) == 3);
@@ -17,15 +17,48 @@ TEST_CASE( "Tensor creation" ) {
     for (uint64_t i = 0; i < tensor.size(); ++i, ++p) {
         REQUIRE(*p == 0.0);
     }
+}
 
+TEST_CASE( "Create initialized tensor" ) {
+    float data[] { 1, 2, 3, 4, 5, 6, 7, 8 };
+    ManagedTensor<float> tensor( { 2, 4 }, data);
+
+    float *p = tensor.data();
+    for (uint64_t i = 0; i < tensor.size(); ++i, ++p) {
+        REQUIRE(*p == Catch::Approx(i+1));
+    }
 }
 
 TEST_CASE( "Fill tensor" ) {
     ManagedTensor<float> tensor( { 200, 300 });
     tensor.fill(3.14);
     tensor.sync();
+
     float *p = tensor.data();
     for (int i = 0; i < tensor.size(); ++i, ++p) {
+        REQUIRE(*p == Catch::Approx(3.14));
+    }
+}
+
+TEST_CASE( "Fill zeros in tensor" ) {
+    float data[] {1.2, 0.0, 1.2, 0.0, 1.2, 1.2, 0.0, 1.2};
+    ManagedTensor<float> tensor( { 2, 4 }, data);
+    tensor.fill_if_zero(1.2);
+    tensor.sync();
+
+    float *p = tensor.data();
+    for (uint64_t i = 0; i < tensor.size(); ++i, ++p) {
+        REQUIRE(*p == Catch::Approx(1.2));
+    }
+}
+
+TEST_CASE( "Copy tensor" ) {
+    ManagedTensor<float> tensor( { 20, 30 });
+    tensor.fill(3.14);
+    ManagedTensor<float> tensor2(tensor);
+
+    float *p = tensor.data();
+    for (uint64_t i = 0; i < tensor2.size(); ++i, ++p) {
         REQUIRE(*p == Catch::Approx(3.14));
     }
 }
@@ -103,6 +136,30 @@ TEST_CASE( "Multiply tensors (same type)" ) {
     float *p = tensor1.data();
     for (int i = 0; i < tensor1.size(); ++i, ++p) {
         REQUIRE(*p == Catch::Approx(10.0));
+    }
+}
+
+TEST_CASE( "Negating tensor" ) {
+    ManagedTensor<float> tensor( { 2, 3 });
+    tensor.fill(2.0);
+    tensor.neg();
+    tensor.sync();
+
+    float *p = tensor.data();
+    for (int i = 0; i < tensor.size(); ++i, ++p) {
+        REQUIRE(*p == Catch::Approx(-2.0));
+    }
+}
+
+TEST_CASE( "Reciprocate tensor" ) {
+    ManagedTensor<float> tensor( { 2, 3 });
+    tensor.fill(2.0);
+    tensor.recip();
+    tensor.sync();
+
+    float *p = tensor.data();
+    for (int i = 0; i < tensor.size(); ++i, ++p) {
+        REQUIRE(*p == Catch::Approx(0.5));
     }
 }
 
