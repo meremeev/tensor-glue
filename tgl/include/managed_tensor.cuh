@@ -8,12 +8,9 @@
 
 #include "common.h"
 #include "tensor.h"
-#include "tensor_scalar_ops.cuh"
-#include "tensor_unary_ops.cuh"
-#include "tensor_binary_ops.cuh"
+#include "elementwise_kernels.cuh"
 
 namespace tgl {
-
 
 template<typename T>
 class ManagedTensor: public Tensor<T> {
@@ -27,11 +24,12 @@ public:
             nelem_ *= dim_size;
         }
         data_size_ = nelem_ * sizeof(T);
-        // ToDo: consider asynchronous allocation
+
         check_cuda_error(cudaMallocManaged(&data_, data_size_));
         if (set_to_zero) {
             check_cuda_error(cudaMemset(data_, 0, data_size_));
         }
+
         // ToDo: define based on device properties and data size
         grid_dims_ = 12;
         block_dims_ = 64;
@@ -64,75 +62,68 @@ public:
     T* data() override {
         return data_;
     }
+    // Scalar operations
     void fill(T value) override {
-        launch_fill_kernel<T>(data_, value, nelem_, grid_dims_, block_dims_, stream_);
+        launch_kernel<set_val_op<T>>(value);
     }
     void add(T value) override {
-        launch_add_scalar_kernel<T>(data_, value, nelem_, grid_dims_, block_dims_, stream_);
-    }
-    void add(Tensor<std::int8_t> &other) override {
-        check_dims(other.dims());
-        other.sync();
-        launch_add_kernel<T, std::int8_t>(data_, other.data(), nelem_, grid_dims_, block_dims_, stream_);
-    }
-    void add(Tensor<std::int64_t> &other) override {
-        check_dims(other.dims());
-        other.sync();
-        launch_add_kernel<T, std::int64_t>(data_, other.data(), nelem_, grid_dims_, block_dims_, stream_);
-    }
-    void add(Tensor<float> &other) override {
-        check_dims(other.dims());
-        other.sync();
-        launch_add_kernel<T, float>(data_, other.data(), nelem_, grid_dims_, block_dims_, stream_);
-    }
-    void add(Tensor<double> &other) override {
-        check_dims(other.dims());
-        other.sync();
-        launch_add_kernel<T, double>(data_, other.data(), nelem_, grid_dims_, block_dims_, stream_);
+        launch_kernel<add_scalar_op<T>>(value);
     }
     void mult(T value) override {
-        launch_mult_scalar_kernel<T>(data_, value, nelem_, grid_dims_, block_dims_, stream_);
+        launch_kernel<mult_scalar_op<T>>(value);
+    }
+    // Binary operations
+    void add(Tensor<std::int8_t> &other) override {
+        launch_kernel<std::int8_t, add_op<T, std::int8_t>>(other);
+    }
+    void add(Tensor<std::int64_t> &other) override {
+        launch_kernel<std::int64_t, add_op<T, std::int64_t>>(other);
+    }
+    void add(Tensor<float> &other) override {
+        launch_kernel<float, add_op<T, float>>(other);
+    }
+    void add(Tensor<double> &other) override {
+        launch_kernel<double, add_op<T, double>>(other);
     }
     void mult(Tensor<std::int8_t> &other) override {
-        check_dims(other.dims());
-        other.sync();
-        launch_mult_kernel<T, std::int8_t>(data_, other.data(), nelem_, grid_dims_, block_dims_, stream_);
+        launch_kernel<std::int8_t, mult_op<T, std::int8_t>>(other);
     }
     void mult(Tensor<std::int64_t> &other) override {
-        check_dims(other.dims());
-        other.sync();
-        launch_mult_kernel<T, std::int64_t>(data_, other.data(), nelem_, grid_dims_, block_dims_, stream_);
+        launch_kernel<std::int64_t, mult_op<T, std::int64_t>>(other);
     }
     void mult(Tensor<float> &other) override {
-        check_dims(other.dims());
-        other.sync();
-        launch_mult_kernel<T, float>(data_, other.data(), nelem_, grid_dims_, block_dims_, stream_);
+        launch_kernel<float, mult_op<T, float>>(other);
     }
     void mult(Tensor<double> &other) override {
-        check_dims(other.dims());
-        other.sync();
-        launch_mult_kernel<T, double>(data_, other.data(), nelem_, grid_dims_, block_dims_, stream_);
+        launch_kernel<double, mult_op<T, double>>(other);
     }
+    // Unary operations
+
 
     void sync() override {
         check_cuda_error(cudaStreamSynchronize(stream_));
     }
 
 private:
-    void check_dims(const TensorDims &other_dims) {
-        if (dims_.size() != other_dims.size()) {
-            std::ostringstream ss;
-            ss << "Tensors have different number of dimensions: " << dims_.size() << "!=" << other_dims.size();
-            throw tensor_size_mismatch(ss.str());
-        }
-        for (size_t i = 0; i < dims_.size(); ++i) {
-            if (dims_[i] != other_dims[i]) {
-                std::ostringstream ss;
-                ss << "Tensors have different size of dimension " << i << ": " << dims_[i] << "!=" << other_dims[i];
-                throw tensor_size_mismatch(ss.str());
-            }
-        }
+
+    template<scalar_op<T> op>
+    void launch_kernel(T value) {
+        scalar_op_kernel<T, op> <<<grid_dims_, block_dims_, 0, stream_>>>(data_, value, nelem_);
+        check_cuda_error();
     }
+
+    template<typename U, binary_op<T, U> op>
+    void launch_kernel(Tensor<U> &other) {
+        if (nelem_ != other.size()) {
+            std::ostringstream ss;
+            ss << "Tensors have different number of elements: " << nelem_ << " != " << other.size();
+            throw  std::runtime_error(ss.str());
+        }
+        other.sync();
+        binary_op_kernel<T, U, op> <<<grid_dims_, block_dims_, 0, stream_>>>(data_, other.data(), nelem_);
+        check_cuda_error();
+    }
+
     TensorDims dims_;
     int64_t nelem_;
     int64_t data_size_;

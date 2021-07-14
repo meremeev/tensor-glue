@@ -14,16 +14,6 @@ public:
     }
 };
 
-class tensor_size_mismatch: public std::runtime_error {
-public:
-    explicit tensor_size_mismatch(const std::string& msg) :
-            std::runtime_error(msg) {
-    }
-    explicit tensor_size_mismatch(const char* msg) :
-            std::runtime_error(msg) {
-    }
-};
-
 inline void check_cuda_error(cudaError_t err) {
     if (err != cudaSuccess) {
         throw tgl::cuda_error(cudaGetErrorString(cudaGetLastError()));
