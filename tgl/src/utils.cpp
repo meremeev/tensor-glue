@@ -5,35 +5,36 @@
 #include "common.h"
 #include "utils.h"
 
-namespace tgl {
-
-int select_device(int device) {
+namespace tgl
+{
+int select_device( int device )
+{
     int device_count;
-    check_cuda_error(cudaGetDeviceCount(&device_count));
-    if (device < 0) {
+    check_cuda_error( cudaGetDeviceCount( &device_count ) );
+    if( device < 0 ) {
         int attr_val;
-        for (device = 0; device < device_count; ++device) {
-            check_cuda_error(cudaDeviceGetAttribute(&attr_val, cudaDevAttrManagedMemory, device));
-            if (attr_val == 1) {
+        for( device = 0; device < device_count; ++device ) {
+            check_cuda_error( cudaDeviceGetAttribute( &attr_val, cudaDevAttrManagedMemory, device ) );
+            if( attr_val == 1 ) {
                 break;
             }
         }
-        if (device == device_count) {
+        if( device == device_count ) {
             device = 0;
         }
     } else {
-        if (device >= device_count) {
-            throw std::range_error("Requested device is out of range");
+        if( device >= device_count ) {
+            throw std::range_error( "Requested device is out of range" );
         }
     }
-    cudaSetDevice(device);
+    cudaSetDevice( device );
     return device;
 }
 
-bool is_managed_memory(int device) {
+bool is_managed_memory( int device )
+{
     int attr_val;
-    check_cuda_error(cudaDeviceGetAttribute(&attr_val, cudaDevAttrManagedMemory, device));
+    check_cuda_error( cudaDeviceGetAttribute( &attr_val, cudaDevAttrManagedMemory, device ) );
     return attr_val == 1;
 }
-
-}
+} // namespace tgl
