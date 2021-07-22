@@ -26,20 +26,20 @@ template <typename T> class Tensor
     virtual T* data() = 0;
     virtual void prefetch( int device ) const = 0;
     virtual void sync() const = 0;
-    virtual void fill( T value ) = 0;
-    virtual void fill_if_zero( T value ) = 0;
-    virtual void add( T value ) = 0;
-    virtual void mult( T value ) = 0;
-    virtual void add( Tensor<std::int8_t>& other ) = 0;
-    virtual void add( Tensor<std::int64_t>& other ) = 0;
-    virtual void add( Tensor<float>& other ) = 0;
-    virtual void add( Tensor<double>& other ) = 0;
-    virtual void mult( Tensor<std::int8_t>& other ) = 0;
-    virtual void mult( Tensor<std::int64_t>& other ) = 0;
-    virtual void mult( Tensor<float>& other ) = 0;
-    virtual void mult( Tensor<double>& other ) = 0;
-    virtual void neg() = 0;
-    virtual void recip() = 0;
+    virtual Tensor<T>& fill( T value ) = 0;
+    virtual Tensor<T>& fill_if_zero( T value ) = 0;
+    virtual Tensor<T>& add( T value ) = 0;
+    virtual Tensor<T>& mult( T value ) = 0;
+    virtual Tensor<T>& add( Tensor<std::int8_t>& other ) = 0;
+    virtual Tensor<T>& add( Tensor<std::int64_t>& other ) = 0;
+    virtual Tensor<T>& add( Tensor<float>& other ) = 0;
+    virtual Tensor<T>& add( Tensor<double>& other ) = 0;
+    virtual Tensor<T>& mult( Tensor<std::int8_t>& other ) = 0;
+    virtual Tensor<T>& mult( Tensor<std::int64_t>& other ) = 0;
+    virtual Tensor<T>& mult( Tensor<float>& other ) = 0;
+    virtual Tensor<T>& mult( Tensor<double>& other ) = 0;
+    virtual Tensor<T>& neg() = 0;
+    virtual Tensor<T>& recip() = 0;
 
   protected:
     Tensor& operator=( Tensor&& other ) = delete;

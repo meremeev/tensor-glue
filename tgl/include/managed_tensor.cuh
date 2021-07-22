@@ -112,63 +112,77 @@ template <typename T> class ManagedTensor : public Tensor<T>
         check_cuda_error( cudaStreamSynchronize( stream_ ) );
     }
     // Scalar operations
-    void fill( T value ) override
+    Tensor<T>& fill( T value ) override
     {
         launch_kernel<set_val_op<T>>( value );
+        return *this;
     }
-    void fill_if_zero( T value ) override
+    Tensor<T>& fill_if_zero( T value ) override
     {
         launch_kernel<set_if_zero_op<T>>( value );
+        return *this;
     }
-    void add( T value ) override
+    Tensor<T>& add( T value ) override
     {
         launch_kernel<add_scalar_op<T>>( value );
+        return *this;
     }
-    void mult( T value ) override
+    Tensor<T>& mult( T value ) override
     {
         launch_kernel<mult_scalar_op<T>>( value );
+        return *this;
     }
     // Binary operations
-    void add( Tensor<std::int8_t>& other ) override
+    Tensor<T>& add( Tensor<std::int8_t>& other ) override
     {
         launch_kernel<std::int8_t, add_op<T, std::int8_t>>( other );
+        return *this;
     }
-    void add( Tensor<std::int64_t>& other ) override
+    Tensor<T>& add( Tensor<std::int64_t>& other ) override
     {
         launch_kernel<std::int64_t, add_op<T, std::int64_t>>( other );
+        return *this;
     }
-    void add( Tensor<float>& other ) override
+    Tensor<T>& add( Tensor<float>& other ) override
     {
         launch_kernel<float, add_op<T, float>>( other );
+        return *this;
     }
-    void add( Tensor<double>& other ) override
+    Tensor<T>& add( Tensor<double>& other ) override
     {
         launch_kernel<double, add_op<T, double>>( other );
+        return *this;
     }
-    void mult( Tensor<std::int8_t>& other ) override
+    Tensor<T>& mult( Tensor<std::int8_t>& other ) override
     {
         launch_kernel<std::int8_t, mult_op<T, std::int8_t>>( other );
+        return *this;
     }
-    void mult( Tensor<std::int64_t>& other ) override
+    Tensor<T>& mult( Tensor<std::int64_t>& other ) override
     {
         launch_kernel<std::int64_t, mult_op<T, std::int64_t>>( other );
+        return *this;
     }
-    void mult( Tensor<float>& other ) override
+    Tensor<T>& mult( Tensor<float>& other ) override
     {
         launch_kernel<float, mult_op<T, float>>( other );
+        return *this;
     }
-    void mult( Tensor<double>& other ) override
+    Tensor<T>& mult( Tensor<double>& other ) override
     {
         launch_kernel<double, mult_op<T, double>>( other );
+        return *this;
     }
     // Unary operations
-    void neg() override
+    Tensor<T>& neg() override
     {
         launch_kernel<neg_op<T>>();
+        return *this;
     }
-    void recip() override
+    Tensor<T>& recip() override
     {
         launch_kernel<recip_op<T>>();
+        return *this;
     }
 
   private:
