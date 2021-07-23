@@ -127,9 +127,24 @@ template <typename T> class ManagedTensor : public Tensor<T>
         launch_kernel<add_scalar_op<T>>( value );
         return *this;
     }
+    Tensor<T>& sub( T value ) override
+    {
+        launch_kernel<sub_scalar_op<T>>( value );
+        return *this;
+    }
     Tensor<T>& mult( T value ) override
     {
         launch_kernel<mult_scalar_op<T>>( value );
+        return *this;
+    }
+    Tensor<T>& div( T value ) override
+    {
+        launch_kernel<div_scalar_op<T>>( value );
+        return *this;
+    }
+    Tensor<T>& fmod( T value ) override
+    {
+        launch_kernel<fmod_scalar_op<T>>( value );
         return *this;
     }
     // Binary operations
@@ -182,6 +197,31 @@ template <typename T> class ManagedTensor : public Tensor<T>
     Tensor<T>& recip() override
     {
         launch_kernel<recip_op<T>>();
+        return *this;
+    }
+    Tensor<T>& exp() override
+    {
+        launch_kernel<exp_op<T>>();
+        return *this;
+    }
+    Tensor<T>& fabs() override
+    {
+        launch_kernel<fabs_op<T>>();
+        return *this;
+    }
+    Tensor<T>& log() override
+    {
+        launch_kernel<log_op<T>>();
+        return *this;
+    }
+    Tensor<T>& log10() override
+    {
+        launch_kernel<log10_op<T>>();
+        return *this;
+    }
+    Tensor<T>& sqrt() override
+    {
+        launch_kernel<sqrt_op<T>>();
         return *this;
     }
 

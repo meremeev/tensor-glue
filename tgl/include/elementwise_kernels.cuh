@@ -3,12 +3,13 @@
 
 #include <cassert>
 #include <cstdio>
+#include <cuda_runtime.h>
 
 #include "common.h"
 
 namespace tgl
 {
-// Scalar operations
+// Binary scalar operations
 
 template <typename T> using scalar_op = void( T* a, T b );
 
@@ -57,7 +58,12 @@ template <typename T> __device__ void div_scalar_op( T* a, T b )
     *a /= b;
 }
 
-// Binary operations
+template <typename T> __device__ void fmod_scalar_op( T* a, T b )
+{
+    *a = fmodf( *a, b );
+}
+
+// Binary tensor operations
 
 template <typename T, typename U> using binary_op = void( T* a, U* b );
 
@@ -96,6 +102,11 @@ template <typename T, typename U> __device__ void div_op( T* a, U* b )
     *a /= *b;
 }
 
+template <typename T, typename U> __device__ void fmod_op( T* a, U* b )
+{
+    *a = fmod( *a, *b );
+}
+
 // Unary operations
 
 template <typename T> using unary_op = void( T* a );
@@ -123,5 +134,31 @@ template <typename T> __device__ void recip_op( T* a )
 {
     *a = 1 / ( *a );
 }
+
+template <typename T> __device__ void exp_op( T* a )
+{
+    *a = expf( *a );
+}
+
+template <typename T> __device__ void fabs_op( T* a )
+{
+    *a = fabsf( *a );
+}
+
+template <typename T> __device__ void log_op( T* a )
+{
+    *a = logf( *a );
+}
+
+template <typename T> __device__ void log10_op( T* a )
+{
+    *a = log10f( *a );
+}
+
+template <typename T> __device__ void sqrt_op( T* a )
+{
+    *a = sqrtf( *a );
+}
+
 } // namespace tgl
 #endif /* TGL_ELEMENTWISE_OPS_H */

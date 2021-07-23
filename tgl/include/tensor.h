@@ -29,7 +29,10 @@ template <typename T> class Tensor
     virtual Tensor<T>& fill( T value ) = 0;
     virtual Tensor<T>& fill_if_zero( T value ) = 0;
     virtual Tensor<T>& add( T value ) = 0;
+    virtual Tensor<T>& sub( T value ) = 0;
     virtual Tensor<T>& mult( T value ) = 0;
+    virtual Tensor<T>& div( T value ) = 0;
+    virtual Tensor<T>& fmod( T value ) = 0;
     virtual Tensor<T>& add( Tensor<std::int8_t>& other ) = 0;
     virtual Tensor<T>& add( Tensor<std::int64_t>& other ) = 0;
     virtual Tensor<T>& add( Tensor<float>& other ) = 0;
@@ -40,6 +43,11 @@ template <typename T> class Tensor
     virtual Tensor<T>& mult( Tensor<double>& other ) = 0;
     virtual Tensor<T>& neg() = 0;
     virtual Tensor<T>& recip() = 0;
+    virtual Tensor<T>& exp() = 0;
+    virtual Tensor<T>& fabs() = 0;
+    virtual Tensor<T>& log() = 0;
+    virtual Tensor<T>& log10() = 0;
+    virtual Tensor<T>& sqrt() = 0;
 
   protected:
     Tensor& operator=( Tensor&& other ) = delete;
