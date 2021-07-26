@@ -9,15 +9,14 @@ namespace tgl
 {
 using TensorDims = std::vector<int64_t>;
 
-template <typename T> class Tensor
+template <typename T>
+class Tensor
 {
     static_assert( std::is_same<T, std::int8_t>::value || std::is_same<T, std::int64_t>::value ||
                    std::is_same<T, float>::value || std::is_same<T, double>::value );
 
   public:
-    virtual ~Tensor() noexcept( false )
-    {
-    }
+    virtual ~Tensor() noexcept( false ) { }
     virtual int64_t ndims() const = 0;
     virtual int64_t size() const = 0;
     virtual int64_t size( int64_t i ) const = 0;
@@ -28,6 +27,8 @@ template <typename T> class Tensor
     virtual void sync() const = 0;
     virtual Tensor<T>& fill( T value ) = 0;
     virtual Tensor<T>& fill_if_zero( T value ) = 0;
+    virtual Tensor<T>& fill_random_uniform( int64_t seed ) = 0;
+    virtual Tensor<T>& fill_random_normal( int64_t seed ) = 0;
     virtual Tensor<T>& add( T value ) = 0;
     virtual Tensor<T>& sub( T value ) = 0;
     virtual Tensor<T>& mult( T value ) = 0;

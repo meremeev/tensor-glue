@@ -8,24 +8,25 @@
 
 #include "common.h"
 #include "elementwise_kernels.cuh"
+#include "random_kernels.cuh"
 #include "tensor.h"
 
 namespace tgl
 {
-template <typename T> class ManagedTensor : public Tensor<T>
+
+template <typename T>
+class ManagedTensor : public Tensor<T>
 {
   public:
     // ToDo: provide ctor with device selection and kernel launch specification
     // ToDo: provide automatic device selection for multi-GPU platform
-    ManagedTensor( const TensorDims& dims, bool set_to_zero = false ) noexcept( false )
-        : dims_( dims )
+    ManagedTensor( const TensorDims& dims, bool set_to_zero = false ) noexcept( false ) : dims_( dims )
     {
         nelem_ = 1;
         for( uint64_t dim_size : dims_ ) {
             nelem_ *= dim_size;
         }
         data_size_ = nelem_ * sizeof( T );
-
         check_cuda_error( cudaMallocManaged( &data_, data_size_ ) );
         if( set_to_zero ) {
             check_cuda_error( cudaMemset( data_, 0, data_size_ ) );
@@ -33,8 +34,7 @@ template <typename T> class ManagedTensor : public Tensor<T>
         init_cuda_params();
     }
 
-    ManagedTensor( const TensorDims& dims, T* data ) noexcept( false )
-        : ManagedTensor( dims, false )
+    ManagedTensor( const TensorDims& dims, T* data ) noexcept( false ) : ManagedTensor( dims )
     {
         if( data ) {
             check_cuda_error( cudaMemcpy( data_, data, data_size_, cudaMemcpyHostToDevice ) );
@@ -43,8 +43,7 @@ template <typename T> class ManagedTensor : public Tensor<T>
         }
     }
 
-    explicit ManagedTensor( const ManagedTensor<T>& other ) noexcept( false )
-        : ManagedTensor( other.dims_, false )
+    explicit ManagedTensor( const ManagedTensor<T>& other ) noexcept( false ) : ManagedTensor( other.dims_ )
     {
         nelem_ = other.nelem_;
         other.sync();
@@ -52,22 +51,20 @@ template <typename T> class ManagedTensor : public Tensor<T>
     }
 
     ManagedTensor( ManagedTensor<T>&& other )
-        : dims_( other.dims_ )
-        , nelem_( other.nelem_ )
-        , data_size_( other.data_size_ )
-        , data_( other.data_ )
+        : dims_( other.dims_ ), nelem_( other.nelem_ ), data_size_( other.data_size_ ), data_( other.data_ )
     {
         init_cuda_params();
-        other.prefetch( device_ );
         other.sync();
         other.dims_.clear();
         other.nelem_ = 0;
         other.data_size_ = 0;
         other.data_ = nullptr;
+        prefetch( device_ );
     }
 
     virtual ~ManagedTensor() noexcept( false )
     {
+        sync();
         if( data_ ) {
             check_cuda_error( cudaFree( data_ ) );
         }
@@ -120,6 +117,16 @@ template <typename T> class ManagedTensor : public Tensor<T>
     Tensor<T>& fill_if_zero( T value ) override
     {
         launch_kernel<set_if_zero_op<T>>( value );
+        return *this;
+    }
+    Tensor<T>& fill_random_uniform( int64_t seed ) override
+    {
+        launch_kernel<uniform_generator<T>>();
+        return *this;
+    }
+    Tensor<T>& fill_random_normal( int64_t seed ) override
+    {
+        launch_kernel<normal_generator<T>>();
         return *this;
     }
     Tensor<T>& add( T value ) override
@@ -235,13 +242,23 @@ template <typename T> class ManagedTensor : public Tensor<T>
         check_cuda_error( cudaGetDevice( &device_ ) );
     }
 
-    template <scalar_op<T> op> void launch_kernel( T value )
+    template <random_generator<T> gen>
+    void launch_kernel()
+    {
+        random_init_kernel<T, gen><<<grid_dims_, block_dims_, 0, stream_>>>( data_, nelem_, 123 );
+        check_cuda_error();
+        sync();
+    }
+
+    template <scalar_op<T> op>
+    void launch_kernel( T value )
     {
         scalar_op_kernel<T, op><<<grid_dims_, block_dims_, 0, stream_>>>( data_, value, nelem_ );
         check_cuda_error();
     }
 
-    template <typename U, binary_op<T, U> op> void launch_kernel( Tensor<U>& other )
+    template <typename U, binary_op<T, U> op>
+    void launch_kernel( Tensor<U>& other )
     {
         if( nelem_ != other.size() ) {
             std::ostringstream ss;
@@ -253,7 +270,8 @@ template <typename T> class ManagedTensor : public Tensor<T>
         check_cuda_error();
     }
 
-    template <unary_op<T> op> void launch_kernel()
+    template <unary_op<T> op>
+    void launch_kernel()
     {
         unary_op_kernel<T, op><<<grid_dims_, block_dims_, 0, stream_>>>( data_, nelem_ );
         check_cuda_error();

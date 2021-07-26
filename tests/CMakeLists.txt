@@ -7,7 +7,9 @@ target_link_libraries(platform_info PRIVATE cudart.so)
 
 set(TARGET1 "header_only_lib_test")
 
-add_executable(${TARGET1} managed_tensor_test.cu)
+add_executable(${TARGET1} managed_tensor_creation.cu
+                          managed_tensor_ops.cu
+)
 
 target_include_directories(${TARGET1} PUBLIC ../tgl/include)
 
