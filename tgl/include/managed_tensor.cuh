@@ -18,8 +18,12 @@ class ManagedTensor : public Tensor<T> {
 public:
   // ToDo: provide ctor with device selection and kernel launch specification
   // ToDo: provide automatic device selection for multi-GPU platform
-  ManagedTensor( const TensorDims &dims, bool set_to_zero = false ) noexcept( false ) : dims_( dims ) {
-    nelem_ = 1;
+  ManagedTensor( const TensorDims &dims, bool set_to_zero = false ) noexcept( false )
+      : dims_( dims ), lines_( dims_.size(), 1 ), nelem_( 1 ) {
+
+    for( int i = dims_.size() - 2; i >= 0; --i ) {
+      lines_[i] = dims_[i + 1] * lines_[i + 1];
+    }
     for( uint64_t dim_size : dims_ ) {
       nelem_ *= dim_size;
     }
@@ -40,16 +44,17 @@ public:
   }
 
   explicit ManagedTensor( const ManagedTensor<T> &other ) noexcept( false ) : ManagedTensor( other.dims_ ) {
-    nelem_ = other.nelem_;
     other.sync();
     check_cuda_error( cudaMemcpy( data_, other.data_, data_size_, cudaMemcpyDefault ) );
   }
 
   ManagedTensor( ManagedTensor<T> &&other )
-      : dims_( other.dims_ ), nelem_( other.nelem_ ), data_size_( other.data_size_ ), data_( other.data_ ) {
+      : dims_( other.dims_ ), lines_( other.lines_ ), nelem_( other.nelem_ ), data_size_( other.data_size_ ),
+        data_( other.data_ ) {
     init_cuda_params();
     other.sync();
     other.dims_.clear();
+    other.lines_.clear();
     other.nelem_ = 0;
     other.data_size_ = 0;
     other.data_ = nullptr;
@@ -92,6 +97,22 @@ public:
   }
   void sync() const override {
     check_cuda_error( cudaStreamSynchronize( stream_ ) );
+  }
+  const T &operator[]( TensorIndex index ) const override {
+    sync();
+    return data_[get_flat_index( index )];
+  }
+  T &operator[]( TensorIndex index ) override {
+    sync();
+    return data_[get_flat_index( index )];
+  }
+  const T &operator[]( int64_t index ) const override {
+    sync();
+    return data_[index];
+  }
+  T &operator[]( int64_t index ) override {
+    sync();
+    return data_[index];
   }
   // Scalar operations
   Tensor<T> &fill( T value ) override {
@@ -202,6 +223,26 @@ private:
     check_cuda_error( cudaGetDevice( &device_ ) );
   }
 
+  std::int64_t get_flat_index( TensorIndex index ) const {
+    if( index.size() != dims_.size() ) {
+      std::ostringstream ss;
+      ss << "Index has wrond number of dimentions: " << index.size() << " != " << dims_.size();
+      throw std::runtime_error( ss.str() );
+    }
+
+    std::int64_t flat_idx = 0;
+    for( int i = 0; i < index.size(); ++i ) {
+      if( index[i] < dims_[i] ) {
+        flat_idx += index[i] * lines_[i];
+      } else {
+        std::ostringstream ss;
+        ss << "Index for dimention " << i << " bigger than dimention size: " << dims_[i];
+        throw std::runtime_error( ss.str() );
+      }
+    }
+    return flat_idx;
+  }
+
   template <random_generator<T> gen>
   void launch_kernel() {
     random_init_kernel<T, gen><<<grid_dims_, block_dims_, 0, stream_>>>( data_, nelem_, 123 );
@@ -233,14 +274,15 @@ private:
     check_cuda_error();
   }
 
-  TensorDims dims_{};
-  int64_t nelem_{0};
-  int64_t data_size_{0};
-  T *data_{nullptr};
-  dim3 grid_dims_{};
-  dim3 block_dims_{};
-  cudaStream_t stream_{0};
-  int device_{0};
+  TensorDims dims_;
+  TensorDims lines_;
+  int64_t nelem_;
+  int64_t data_size_;
+  T *data_;
+  dim3 grid_dims_;
+  dim3 block_dims_;
+  cudaStream_t stream_;
+  int device_;
 };
 } // namespace tgl
 #endif /* TGL_MANAGED_TENSOR_H */

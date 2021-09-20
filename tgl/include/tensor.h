@@ -1,12 +1,15 @@
 #ifndef TGL_TENSOR_H
 #define TGL_TENSOR_H
 
+#include <array>
 #include <cstdint>
 #include <type_traits>
 #include <vector>
 
 namespace tgl {
 using TensorDims = std::vector<int64_t>;
+using TensorIndex = std::vector<int64_t>;
+using IndexRange = std::vector<std::array<int64_t, 2>>;
 
 template <typename T>
 class Tensor {
@@ -24,6 +27,10 @@ public:
   virtual T *data() = 0;
   virtual void prefetch( int device ) const = 0;
   virtual void sync() const = 0;
+  virtual const T &operator[]( TensorIndex index ) const = 0;
+  virtual T &operator[]( TensorIndex index ) = 0;
+  virtual const T &operator[]( int64_t index ) const = 0;
+  virtual T &operator[]( int64_t index ) = 0;
   virtual Tensor<T> &fill( T value ) = 0;
   virtual Tensor<T> &fill_if_zero( T value ) = 0;
   virtual Tensor<T> &fill_random_uniform( int64_t seed ) = 0;
