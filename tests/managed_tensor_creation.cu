@@ -37,6 +37,33 @@ TEST_CASE( "Create float tensor from raw data" ) {
   }
 }
 
+TEST_CASE( "Create float tensor with ownership of raw data" ) {
+  float *data;
+  cudaMallocManaged( &data, 2 * 4 * sizeof( float ) );
+  ManagedTensor<float> tensor( {2, 4}, data, true );
+  tensor.fill_random_normal( 123 );
+  tensor.sync();
+
+  for( uint64_t i = 0; i < tensor.size(); ++i ) {
+    REQUIRE( tensor[i] == Catch::Approx( data[i] ) );
+  }
+}
+
+TEST_CASE( "Attempt to create float tensor from invalid data" ) {
+  int exception_count = 0;
+  try {
+    ManagedTensor<float> tensor( {2, 4}, nullptr );
+  } catch( ... ) {
+    exception_count += 1;
+  }
+  try {
+    ManagedTensor<float> tensor( {2, 4}, new float[8], true );
+  } catch( ... ) {
+    exception_count += 1;
+  }
+  REQUIRE( exception_count == 2 );
+}
+
 TEST_CASE( "Copy tensor" ) {
   ManagedTensor<float> tensor1( {20, 30} );
   tensor1.fill( 3.14 );

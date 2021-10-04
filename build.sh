@@ -6,6 +6,7 @@ usage() {
     options:
     -h: show usage help
     -c: clean build - remove all artifacts first
+    -r: release build
     -t: run tests after bulding    
   "
 }
@@ -13,8 +14,9 @@ usage() {
 REPO_ROOT=$( dirname ${BASH_SOURCE[0]} )
 CLEAN_BUILD="no"
 RUN_TESTS="no"
+CMAKE_OPTIONS=""
 
-while getopts 'hct' OPTION; do
+while getopts 'hcdt' OPTION; do
   case "$OPTION" in
     h)
       usage
@@ -23,6 +25,9 @@ while getopts 'hct' OPTION; do
     c)
       CLEAN_BUILD="yes"
       ;;
+    r)
+    	CMAKE_OPTIONS="${CMAKE_OPTIONS} -DCMAKE_BUILD_TYPE=Release"
+    	;;
     t)
       RUN_TESTS="yes"
       ;;
@@ -35,7 +40,7 @@ if [ "$CLEAN_BUILD" == "yes" ]; then
   	rm -rf build
 	mkdir -p build
 	cd build
-	cmake ..
+	cmake $CMAKE_OPTIONS ..
 else
 	cd build
 	if [ "$RUN_TESTS" == "yes" ]; then

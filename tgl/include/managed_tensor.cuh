@@ -1,10 +1,12 @@
 #ifndef TGL_MANAGED_TENSOR_H
 #define TGL_MANAGED_TENSOR_H
 
+#include <cassert>
 #include <cstdint>
 #include <cuda_runtime.h>
 #include <iostream>
 #include <sstream>
+#include <tuple>
 
 #include "common.h"
 #include "elementwise_kernels.cuh"
@@ -20,26 +22,35 @@ public:
   // ToDo: provide automatic device selection for multi-GPU platform
   ManagedTensor( const TensorDims &dims, bool set_to_zero = false ) noexcept( false )
       : dims_( dims ), lines_( dims_.size(), 1 ), nelem_( 1 ) {
-
-    for( int i = dims_.size() - 2; i >= 0; --i ) {
-      lines_[i] = dims_[i + 1] * lines_[i + 1];
-    }
-    for( uint64_t dim_size : dims_ ) {
-      nelem_ *= dim_size;
-    }
-    data_size_ = nelem_ * sizeof( T );
+    init_layout();
+    init_cuda_params();
     check_cuda_error( cudaMallocManaged( &data_, data_size_ ) );
     if( set_to_zero ) {
       check_cuda_error( cudaMemset( data_, 0, data_size_ ) );
     }
-    init_cuda_params();
   }
 
-  ManagedTensor( const TensorDims &dims, T *data ) noexcept( false ) : ManagedTensor( dims ) {
-    if( data ) {
+  ManagedTensor( const TensorDims &dims, T *data, bool take_ownership = false ) noexcept( false )
+      : dims_( dims ), lines_( dims_.size(), 1 ), nelem_( 1 ) {
+    init_layout();
+    init_cuda_params();
+    try {
+      std::ignore = *data;
+    } catch( ... ) {
+      throw std::runtime_error( "Attempt to create tgl::tensor from invalid data pointer" );
+    }
+
+    if( !take_ownership ) {
+      check_cuda_error( cudaMallocManaged( &data_, data_size_ ) );
       check_cuda_error( cudaMemcpy( data_, data, data_size_, cudaMemcpyHostToDevice ) );
     } else {
-      throw std::runtime_error( "Can not copy data from null pointer" );
+      cudaPointerAttributes mem_attr;
+      cudaPointerGetAttributes( &mem_attr, data );
+      if( mem_attr.type == cudaMemoryType::cudaMemoryTypeManaged ) {
+        data_ = data;
+      } else {
+        throw std::runtime_error( "Attempt to take ownershop over not CUDA managed memory" );
+      }
     }
   }
 
@@ -49,8 +60,8 @@ public:
   }
 
   ManagedTensor( ManagedTensor<T> &&other )
-      : dims_( other.dims_ ), lines_( other.lines_ ), nelem_( other.nelem_ ), data_size_( other.data_size_ ),
-        data_( other.data_ ) {
+      : dims_( other.dims_ ), lines_( dims_.size(), 1 ), nelem_( 1 ), data_( other.data_ ) {
+    init_layout();
     init_cuda_params();
     other.sync();
     other.dims_.clear();
@@ -215,6 +226,22 @@ public:
   }
 
 private:
+  void init_layout() {
+    assert( dims_.size() > 0 );
+    assert( lines_.size() > 0 );
+    assert( lines_[dims_.size() - 1] == 1 );
+    assert( nelem_ == 1 );
+    if( dims_.size() > 1 ) {
+      for( int i = dims_.size() - 2; i >= 0; --i ) {
+        lines_[i] = dims_[i + 1] * lines_[i + 1];
+      }
+    }
+    for( uint64_t dim_size : dims_ ) {
+      nelem_ *= dim_size;
+    }
+    data_size_ = nelem_ * sizeof( T );
+  }
+
   void init_cuda_params() noexcept( false ) {
     // ToDo: define based on device properties and data size
     grid_dims_ = 12;
@@ -274,15 +301,15 @@ private:
     check_cuda_error();
   }
 
-  TensorDims dims_;
-  TensorDims lines_;
-  int64_t nelem_;
-  int64_t data_size_;
-  T *data_;
+  TensorDims dims_{};
+  TensorDims lines_{};
+  int64_t nelem_{0};
+  int64_t data_size_{0};
+  T *data_{nullptr};
+  int device_{0};
   dim3 grid_dims_;
   dim3 block_dims_;
   cudaStream_t stream_;
-  int device_;
 };
 } // namespace tgl
 #endif /* TGL_MANAGED_TENSOR_H */
