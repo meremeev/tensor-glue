@@ -6,6 +6,8 @@
 #include <type_traits>
 #include <vector>
 
+#include <cuda_runtime.h>
+
 namespace tgl {
 using TensorDims = std::vector<int64_t>;
 using TensorIndex = std::vector<int64_t>;
@@ -25,6 +27,9 @@ public:
   virtual const TensorDims &dims() const = 0;
   virtual const T *data() const = 0;
   virtual T *data() = 0;
+  virtual void set_stream( cudaStream_t stream ) = 0;
+  virtual cudaStream_t get_stream() const = 0;
+  virtual int get_device() const = 0;
   virtual void prefetch( int device ) const = 0;
   virtual void sync() const = 0;
   virtual const T &operator[]( TensorIndex index ) const = 0;

@@ -15,6 +15,13 @@
 
 namespace tgl {
 
+constexpr int64_t THREADS_PER_BLOCK = 256;
+
+template <typename T, typename U>
+T &operator+=( T &lhs, const U &rhs ){
+
+};
+
 template <typename T>
 class ManagedTensor : public Tensor<T> {
 public:
@@ -23,17 +30,15 @@ public:
   ManagedTensor( const TensorDims &dims, bool set_to_zero = false ) noexcept( false )
       : dims_( dims ), lines_( dims_.size(), 1 ), nelem_( 1 ) {
     init_layout();
-    init_cuda_params();
-    check_cuda_error( cudaMallocManaged( &data_, data_size_ ) );
+    cuda_check( cudaMallocManaged( &data_, data_size_ ) );
     if( set_to_zero ) {
-      check_cuda_error( cudaMemset( data_, 0, data_size_ ) );
+      cuda_check( cudaMemset( data_, 0, data_size_ ) );
     }
   }
 
   ManagedTensor( const TensorDims &dims, T *data, bool take_ownership = false ) noexcept( false )
       : dims_( dims ), lines_( dims_.size(), 1 ), nelem_( 1 ) {
     init_layout();
-    init_cuda_params();
     try {
       std::ignore = *data;
     } catch( ... ) {
@@ -41,8 +46,8 @@ public:
     }
 
     if( !take_ownership ) {
-      check_cuda_error( cudaMallocManaged( &data_, data_size_ ) );
-      check_cuda_error( cudaMemcpy( data_, data, data_size_, cudaMemcpyHostToDevice ) );
+      cuda_check( cudaMallocManaged( &data_, data_size_ ) );
+      cuda_check( cudaMemcpy( data_, data, data_size_, cudaMemcpyHostToDevice ) );
     } else {
       cudaPointerAttributes mem_attr;
       cudaPointerGetAttributes( &mem_attr, data );
@@ -55,30 +60,27 @@ public:
   }
 
   explicit ManagedTensor( const ManagedTensor<T> &other ) noexcept( false ) : ManagedTensor( other.dims_ ) {
+    set_stream( other.get_stream() );
     other.sync();
-    check_cuda_error( cudaMemcpy( data_, other.data_, data_size_, cudaMemcpyDefault ) );
+    cuda_check( cudaMemcpy( data_, other.data_, data_size_, cudaMemcpyDefault ) );
   }
 
   ManagedTensor( ManagedTensor<T> &&other )
-      : dims_( other.dims_ ), lines_( dims_.size(), 1 ), nelem_( 1 ), data_( other.data_ ) {
-    init_layout();
-    init_cuda_params();
-    other.sync();
+      : dims_( other.dims_ ), lines_( other.lines_ ), nelem_( other.nelem_ ), data_size_( other.data_size_ ),
+        data_( other.data_ ), grid_dims_( other.grid_dims_ ), block_dims_( other.block_dims_ ),
+        stream_( other.stream_ ), device_( other.device_ ) {
+
     other.dims_.clear();
     other.lines_.clear();
     other.nelem_ = 0;
     other.data_size_ = 0;
     other.data_ = nullptr;
-    prefetch( device_ );
   }
 
   virtual ~ManagedTensor() noexcept( false ) {
     sync();
     if( data_ ) {
-      check_cuda_error( cudaFree( data_ ) );
-    }
-    if( stream_ ) {
-      check_cuda_error( cudaStreamDestroy( stream_ ) );
+      cuda_check( cudaFree( data_ ) );
     }
   }
 
@@ -103,11 +105,21 @@ public:
   T *data() override {
     return data_;
   }
+  void set_stream( cudaStream_t stream ) override {
+    stream_ = stream;
+  }
+  cudaStream_t get_stream() const override {
+    return stream_;
+  }
+  int get_device() const override {
+    return device_;
+  }
   void prefetch( int device ) const override {
-    check_cuda_error( cudaMemPrefetchAsync( data_, data_size_, device, stream_ ) );
+    cuda_check( cudaMemPrefetchAsync( data_, data_size_, device, stream_ ) );
+    device_ = device;
   }
   void sync() const override {
-    check_cuda_error( cudaStreamSynchronize( stream_ ) );
+    cuda_check( cudaStreamSynchronize( stream_ ) );
   }
   const T &operator[]( TensorIndex index ) const override {
     sync();
@@ -240,14 +252,9 @@ private:
       nelem_ *= dim_size;
     }
     data_size_ = nelem_ * sizeof( T );
-  }
-
-  void init_cuda_params() noexcept( false ) {
-    // ToDo: define based on device properties and data size
-    grid_dims_ = 12;
-    block_dims_ = 64;
-    check_cuda_error( cudaStreamCreate( &stream_ ) );
-    check_cuda_error( cudaGetDevice( &device_ ) );
+    cuda_check( cudaGetDevice( &device_ ) );
+    block_dims_ = THREADS_PER_BLOCK;
+    grid_dims_ = ( nelem_ + THREADS_PER_BLOCK - 1 ) / THREADS_PER_BLOCK;
   }
 
   std::int64_t get_flat_index( TensorIndex index ) const {
@@ -273,14 +280,14 @@ private:
   template <random_generator<T> gen>
   void launch_kernel() {
     random_init_kernel<T, gen><<<grid_dims_, block_dims_, 0, stream_>>>( data_, nelem_, 123 );
-    check_cuda_error();
+    cuda_check();
     sync();
   }
 
   template <scalar_op<T> op>
   void launch_kernel( T value ) {
     scalar_op_kernel<T, op><<<grid_dims_, block_dims_, 0, stream_>>>( data_, value, nelem_ );
-    check_cuda_error();
+    cuda_check();
   }
 
   template <typename U, binary_op<T, U> op>
@@ -290,15 +297,17 @@ private:
       ss << "Tensors have different number of elements: " << nelem_ << " != " << other.size();
       throw std::runtime_error( ss.str() );
     }
-    other.sync();
+    if( other.get_stream() != stream_ ) {
+      other.sync();
+    }
     binary_op_kernel<T, U, op><<<grid_dims_, block_dims_, 0, stream_>>>( data_, other.data(), nelem_ );
-    check_cuda_error();
+    cuda_check();
   }
 
   template <unary_op<T> op>
   void launch_kernel() {
     unary_op_kernel<T, op><<<grid_dims_, block_dims_, 0, stream_>>>( data_, nelem_ );
-    check_cuda_error();
+    cuda_check();
   }
 
   TensorDims dims_{};
@@ -306,10 +315,10 @@ private:
   int64_t nelem_{0};
   int64_t data_size_{0};
   T *data_{nullptr};
-  int device_{0};
   dim3 grid_dims_;
   dim3 block_dims_;
-  cudaStream_t stream_;
+  mutable cudaStream_t stream_{0};
+  mutable int device_{0};
 };
 } // namespace tgl
 #endif /* TGL_MANAGED_TENSOR_H */

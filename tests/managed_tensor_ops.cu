@@ -84,6 +84,22 @@ TEST_CASE( "Add tensors (different types)" ) {
   }
 }
 
+TEST_CASE( "Add tensors (different streams)" ) {
+  ManagedTensor<float> tensor1( {200, 300} );
+  cudaStream_t stream1;
+  check_cuda_error( cudaStreamCreate( &stream1 ) );
+  tensor1.set_stream( stream1 );
+  tensor1.fill( 2.0 );
+
+  ManagedTensor<float> tensor2( {200, 300} );
+  tensor2.fill( 8.0 ).add( tensor1 ).sync();
+
+  float *p = tensor2.data();
+  for( int i = 0; i < tensor2.size(); ++i, ++p ) {
+    REQUIRE( *p == Catch::Approx( 10.0 ) );
+  }
+}
+
 TEST_CASE( "Multiply tensors (same type)" ) {
   ManagedTensor<float> tensor1( {20, 30} );
   tensor1.fill( 2.0 );

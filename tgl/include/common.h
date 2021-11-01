@@ -12,13 +12,13 @@ public:
   }
 };
 
-inline void check_cuda_error( cudaError_t err ) {
+inline void cuda_check( cudaError_t err ) {
   if( err != cudaSuccess ) {
     throw tgl::cuda_error( cudaGetErrorString( cudaGetLastError() ) );
   }
 }
 
-inline void check_cuda_error() {
+inline void cuda_check() {
   cudaError_t err = cudaGetLastError();
   if( err != cudaSuccess ) {
     throw tgl::cuda_error( cudaGetErrorString( err ) );
