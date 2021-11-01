@@ -87,7 +87,7 @@ TEST_CASE( "Add tensors (different types)" ) {
 TEST_CASE( "Add tensors (different streams)" ) {
   ManagedTensor<float> tensor1( {200, 300} );
   cudaStream_t stream1;
-  check_cuda_error( cudaStreamCreate( &stream1 ) );
+  cuda_check( cudaStreamCreate( &stream1 ) );
   tensor1.set_stream( stream1 );
   tensor1.fill( 2.0 );
 

@@ -2,8 +2,13 @@
 #define TGL_UTILS_H_
 
 namespace tgl {
-int select_device( int device = -1 );
-bool is_managed_memory( int device );
+
+inline bool is_managed_memory( int device ) {
+  int attr_val;
+  cuda_check( cudaDeviceGetAttribute( &attr_val, cudaDevAttrManagedMemory, device ) );
+  return attr_val == 1;
+}
+
 } // namespace tgl
 
 #endif /* TGL_UTILS_H_ */

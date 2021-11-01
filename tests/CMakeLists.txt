@@ -11,13 +11,8 @@ add_executable(${TARGET1} managed_tensor_creation.cu
                           managed_tensor_ops.cu
 )
 
-target_include_directories(${TARGET1} PUBLIC ../tgl/include)
-
-target_link_libraries(${TARGET1} PRIVATE Catch2::Catch2WithMain)
+set_target_properties(${TARGET1} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
 
 
-set(TARGET2 "binary_lib_test")
+target_link_libraries(${TARGET1} PRIVATE Catch2::Catch2WithMain ${LIB_NAME} cudart.so)
 
-add_executable(${TARGET2} tensor_factory_test.cpp)
-
-target_link_libraries(${TARGET2} PRIVATE tensor-glue Catch2::Catch2WithMain)

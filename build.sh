@@ -46,7 +46,6 @@ else
 	if [ "$RUN_TESTS" == "yes" ]; then
 		rm -f ./tests/platform_info
 		rm -f ./tests/header_only_lib_test
-		rm -f ./tests/binary_lib_test
 	fi
 fi
 
@@ -61,6 +60,4 @@ if [ "$RUN_TESTS" == "yes" ]; then
 	printf "\n-- Header-only library test\n"
 	./tests/header_only_lib_test
 
-	printf "\n-- Binary library test\n"
-	./tests/binary_lib_test
 fi

@@ -9,5 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_STANDARD 14)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
+set(LIB_NAME tgl)
+
 add_subdirectory(tgl)
 add_subdirectory(tests)

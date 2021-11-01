@@ -18,18 +18,10 @@ More about CUDA Unified Memory:
 
 ### Usage
 
-Library can be used as header-only template library. This option require compilation of CUDA code as part of your application, and this lets you compile with options (PTX, compute capability, etc.) specific to your application.
+Library is a header-only template library. This option require compilation of CUDA code as part of your application, and this lets you compile with options (PTX, compute capability, etc.) specific to your application.
 
 ```
 #include <managed_tensor.cuh>
 
 ManagedTensor<float> tgl::tensor( { 2, 3, 3, 4 }, true);
-```
-
-Also library can be used as a binary library. In this case you do not need to compile a CUDA code. Just link your application with `libtensor-glue.so` and use factory functions to create a tensor. Note, in this case library should be compiled for your device architecture.
-
-```
-#include <tensor_factory.h>
-
-Tensor<float>* tensor = tgl::new_float_tensor( { 2, 3, 3, 4 }, true);
 ```
