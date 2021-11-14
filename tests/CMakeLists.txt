@@ -7,8 +7,8 @@ target_link_libraries(platform_info PRIVATE cudart.so)
 
 set(TARGET1 "header_only_lib_test")
 
-add_executable(${TARGET1} managed_tensor_creation.cu
-                          managed_tensor_ops.cu
+add_executable(${TARGET1} tensor_creation.cu
+                          tensor_ops.cu
 )
 
 set_target_properties(${TARGET1} PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

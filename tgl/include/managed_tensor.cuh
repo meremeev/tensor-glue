@@ -1,29 +1,35 @@
 #ifndef TGL_MANAGED_TENSOR_H
 #define TGL_MANAGED_TENSOR_H
 
-#include <cassert>
 #include <cstdint>
 #include <cuda_runtime.h>
+
+#include <array>
+#include <cassert>
+#include <cstdint>
 #include <iostream>
 #include <sstream>
 #include <tuple>
+#include <type_traits>
+#include <vector>
+
+#include <cuda_runtime.h>
 
 #include "common.h"
 #include "elementwise_kernels.cuh"
 #include "random_kernels.cuh"
-#include "tensor.h"
 
 namespace tgl {
 
 constexpr int64_t THREADS_PER_BLOCK = 256;
 
-template <typename T, typename U>
-T &operator+=( T &lhs, const U &rhs ){
+using TensorDims = std::vector<int64_t>;
+using TensorIndex = std::vector<int64_t>;
+using IndexRange = std::vector<std::array<int64_t, 2>>;
 
-};
-
-template <typename T>
-class ManagedTensor : public Tensor<T> {
+template <typename T,
+          typename = typename std::enable_if<( !std::is_pointer<T>::value && !std::is_const<T>::value ), T>::type>
+class ManagedTensor {
 public:
   // ToDo: provide ctor with device selection and kernel launch specification
   // ToDo: provide automatic device selection for multi-GPU platform
@@ -87,152 +93,195 @@ public:
   ManagedTensor &operator=( const ManagedTensor &other ) = delete;
   ManagedTensor &operator=( ManagedTensor &&other ) = delete;
 
-  int64_t ndims() const override {
+  int64_t ndims() const {
     return dims_.size();
   }
-  int64_t size() const override {
+
+  int64_t size() const {
     return nelem_;
   }
-  int64_t size( int64_t i ) const override {
+
+  int64_t size( int64_t i ) const {
     return dims_[i];
   }
-  const TensorDims &dims() const override {
+
+  const TensorDims &dims() const {
     return dims_;
   }
-  const T *data() const override {
+
+  const T *data() const {
     return data_;
   }
-  T *data() override {
+
+  T *data() {
     return data_;
   }
-  void set_stream( cudaStream_t stream ) override {
+
+  void set_stream( cudaStream_t stream ) const {
     stream_ = stream;
   }
-  cudaStream_t get_stream() const override {
+
+  cudaStream_t get_stream() const {
     return stream_;
   }
-  int get_device() const override {
+
+  int get_device() const {
     return device_;
   }
-  void prefetch( int device ) const override {
+
+  void prefetch( int device ) const {
     cuda_check( cudaMemPrefetchAsync( data_, data_size_, device, stream_ ) );
     device_ = device;
   }
-  void sync() const override {
+
+  void sync() const {
     cuda_check( cudaStreamSynchronize( stream_ ) );
   }
-  const T &operator[]( TensorIndex index ) const override {
+
+  const T &operator[]( TensorIndex index ) const {
     sync();
     return data_[get_flat_index( index )];
   }
-  T &operator[]( TensorIndex index ) override {
+
+  T &operator[]( TensorIndex index ) {
     sync();
     return data_[get_flat_index( index )];
   }
-  const T &operator[]( int64_t index ) const override {
+
+  const T &operator[]( int64_t index ) const {
     sync();
     return data_[index];
   }
-  T &operator[]( int64_t index ) override {
+
+  T &operator[]( int64_t index ) {
     sync();
     return data_[index];
   }
+
   // Scalar operations
-  Tensor<T> &fill( T value ) override {
+  ManagedTensor<T> &set_val( T value ) {
     launch_kernel<set_val_op<T>>( value );
     return *this;
   }
-  Tensor<T> &fill_if_zero( T value ) override {
+
+  ManagedTensor<T> &set_if_zero( T value ) {
     launch_kernel<set_if_zero_op<T>>( value );
     return *this;
   }
-  Tensor<T> &fill_random_uniform( int64_t seed ) override {
+
+  ManagedTensor<T> &clip_above( T value ) {
+    launch_kernel<clip_above_op<T>>( value );
+    return *this;
+  }
+
+  ManagedTensor<T> &clip_below( T value ) {
+    launch_kernel<clip_below_op<T>>( value );
+    return *this;
+  }
+
+  ManagedTensor<T> &fill_random_uniform( int64_t seed ) {
     launch_kernel<uniform_generator<T>>();
     return *this;
   }
-  Tensor<T> &fill_random_normal( int64_t seed ) override {
+
+  ManagedTensor<T> &fill_random_normal( int64_t seed ) {
     launch_kernel<normal_generator<T>>();
     return *this;
   }
-  Tensor<T> &add( T value ) override {
+
+  ManagedTensor<T> &operator+=( T value ) {
     launch_kernel<add_scalar_op<T>>( value );
     return *this;
-  }
-  Tensor<T> &sub( T value ) override {
+  };
+
+  ManagedTensor<T> &operator-=( T value ) {
     launch_kernel<sub_scalar_op<T>>( value );
     return *this;
-  }
-  Tensor<T> &mult( T value ) override {
+  };
+
+  ManagedTensor<T> &operator*=( T value ) {
     launch_kernel<mult_scalar_op<T>>( value );
     return *this;
   }
-  Tensor<T> &div( T value ) override {
+
+  ManagedTensor<T> &operator/=( T value ) {
     launch_kernel<div_scalar_op<T>>( value );
     return *this;
   }
-  Tensor<T> &fmod( T value ) override {
+
+  ManagedTensor<T> &operator%=( T value ) {
     launch_kernel<fmod_scalar_op<T>>( value );
     return *this;
   }
+
+  ManagedTensor<T> &pow( T value ) {
+    launch_kernel<pow_scalar_op<T>>( value );
+    return *this;
+  }
+
   // Binary operations
-  Tensor<T> &add( Tensor<std::int8_t> &other ) override {
-    launch_kernel<std::int8_t, add_op<T, std::int8_t>>( other );
+  template <typename U>
+  ManagedTensor<T> &operator+=( const ManagedTensor<U> &other ) {
+    launch_kernel<U, add_op<T, U>>( other );
     return *this;
   }
-  Tensor<T> &add( Tensor<std::int64_t> &other ) override {
-    launch_kernel<std::int64_t, add_op<T, std::int64_t>>( other );
+
+  template <typename U>
+  ManagedTensor<T> &operator-=( const ManagedTensor<U> &other ) {
+    launch_kernel<U, sub_op<T, U>>( other );
     return *this;
   }
-  Tensor<T> &add( Tensor<float> &other ) override {
-    launch_kernel<float, add_op<T, float>>( other );
+
+  template <typename U>
+  ManagedTensor<T> &operator*=( const ManagedTensor<U> &other ) {
+    launch_kernel<U, mult_op<T, U>>( other );
     return *this;
   }
-  Tensor<T> &add( Tensor<double> &other ) override {
-    launch_kernel<double, add_op<T, double>>( other );
+
+  template <typename U>
+  ManagedTensor<T> &operator/=( const ManagedTensor<U> &other ) {
+    launch_kernel<U, div_op<T, U>>( other );
     return *this;
   }
-  Tensor<T> &mult( Tensor<std::int8_t> &other ) override {
-    launch_kernel<std::int8_t, mult_op<T, std::int8_t>>( other );
+
+  template <typename U>
+  ManagedTensor<T> &operator%=( const ManagedTensor<U> &other ) {
+    launch_kernel<U, fmod_op<T, U>>( other );
     return *this;
   }
-  Tensor<T> &mult( Tensor<std::int64_t> &other ) override {
-    launch_kernel<std::int64_t, mult_op<T, std::int64_t>>( other );
+
+  template <typename U>
+  ManagedTensor<T> &pow( const ManagedTensor<U> &other ) {
+    launch_kernel<U, pow_op<T, U>>( other );
     return *this;
   }
-  Tensor<T> &mult( Tensor<float> &other ) override {
-    launch_kernel<float, mult_op<T, float>>( other );
-    return *this;
-  }
-  Tensor<T> &mult( Tensor<double> &other ) override {
-    launch_kernel<double, mult_op<T, double>>( other );
-    return *this;
-  }
+
   // Unary operations
-  Tensor<T> &neg() override {
+  ManagedTensor<T> &neg() {
     launch_kernel<neg_op<T>>();
     return *this;
   }
-  Tensor<T> &recip() override {
+  ManagedTensor<T> &recip() {
     launch_kernel<recip_op<T>>();
     return *this;
   }
-  Tensor<T> &exp() override {
+  ManagedTensor<T> &exp() {
     launch_kernel<exp_op<T>>();
     return *this;
   }
-  Tensor<T> &fabs() override {
+  ManagedTensor<T> &fabs() {
     launch_kernel<fabs_op<T>>();
     return *this;
   }
-  Tensor<T> &log() override {
+  ManagedTensor<T> &log() {
     launch_kernel<log_op<T>>();
     return *this;
   }
-  Tensor<T> &log10() override {
+  ManagedTensor<T> &log10() {
     launch_kernel<log10_op<T>>();
     return *this;
   }
-  Tensor<T> &sqrt() override {
+  ManagedTensor<T> &sqrt() {
     launch_kernel<sqrt_op<T>>();
     return *this;
   }
@@ -279,7 +328,7 @@ private:
 
   template <random_generator<T> gen>
   void launch_kernel() {
-    random_init_kernel<T, gen><<<grid_dims_, block_dims_, 0, stream_>>>( data_, nelem_, 123 );
+    random_fill_kernel<T, gen><<<grid_dims_, block_dims_, 0, stream_>>>( data_, nelem_, 123 );
     cuda_check();
     sync();
   }
@@ -291,7 +340,7 @@ private:
   }
 
   template <typename U, binary_op<T, U> op>
-  void launch_kernel( Tensor<U> &other ) {
+  void launch_kernel( const ManagedTensor<U> &other ) {
     if( nelem_ != other.size() ) {
       std::ostringstream ss;
       ss << "Tensors have different number of elements: " << nelem_ << " != " << other.size();

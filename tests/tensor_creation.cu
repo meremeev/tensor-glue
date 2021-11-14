@@ -66,7 +66,7 @@ TEST_CASE( "Attempt to create float tensor from invalid data" ) {
 
 TEST_CASE( "Copy tensor" ) {
   ManagedTensor<float> tensor1( {20, 30} );
-  tensor1.fill( 3.14 );
+  tensor1.set_val( 3.14 );
   ManagedTensor<float> tensor2( tensor1 );
 
   for( uint64_t i = 0; i < tensor2.size(); ++i ) {
@@ -76,7 +76,7 @@ TEST_CASE( "Copy tensor" ) {
 
 TEST_CASE( "Move tensor" ) {
   ManagedTensor<float> tensor1( {20, 30} );
-  tensor1.fill( 3.14 );
+  tensor1.set_val( 3.14 );
 
   ManagedTensor<float> tensor2( std::move( tensor1 ) );
 
@@ -128,22 +128,42 @@ TEST_CASE( "Modification of tensor elements" ) {
   REQUIRE( tensor[{1, 3}] == Catch::Approx( 5.0 ) );
 }
 
-TEST_CASE( "Fill tensor with value" ) {
+TEST_CASE( "Set tensor with value" ) {
   ManagedTensor<float> tensor( {2, 3} );
-  tensor.fill( 3.14 );
+  tensor.set_val( 3.14 );
 
   for( uint64_t i = 0; i < tensor.size(); ++i ) {
     REQUIRE( tensor[i] == Catch::Approx( 3.14 ) );
   }
 }
 
-TEST_CASE( "Fill zeros in tensor" ) {
+TEST_CASE( "Replace zeros in tensor with value" ) {
   float data[]{1.2, 0.0, 1.2, 0.0, 1.2, 1.2, 0.0, 1.2};
   ManagedTensor<float> tensor( {2, 4}, data );
-  tensor.fill_if_zero( 1.2 );
+  tensor.set_if_zero( 1.2 );
 
   for( uint64_t i = 0; i < tensor.size(); ++i ) {
     REQUIRE( tensor[i] == Catch::Approx( 1.2 ) );
+  }
+}
+
+TEST_CASE( "Clip tensor above value" ) {
+  ManagedTensor<float> tensor( {2, 3} );
+  tensor.set_val( 3.14 );
+  tensor.clip_above( 3.1 );
+
+  for( uint64_t i = 0; i < tensor.size(); ++i ) {
+    REQUIRE( tensor[i] == Catch::Approx( 3.1 ) );
+  }
+}
+
+TEST_CASE( "Clip tensor below value" ) {
+  ManagedTensor<float> tensor( {2, 3} );
+  tensor.set_val( -3.14 );
+  tensor.clip_below( -3.1 );
+
+  for( uint64_t i = 0; i < tensor.size(); ++i ) {
+    REQUIRE( tensor[i] == Catch::Approx( -3.1 ) );
   }
 }
 

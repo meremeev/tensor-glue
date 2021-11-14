@@ -37,6 +37,18 @@ __device__ void set_if_zero_op( T *a, T b ) {
 }
 
 template <typename T>
+__device__ void clip_above_op( T *a, T b ) {
+  if( *a > b )
+    *a = b;
+}
+
+template <typename T>
+__device__ void clip_below_op( T *a, T b ) {
+  if( *a < b )
+    *a = b;
+}
+
+template <typename T>
 __device__ void add_scalar_op( T *a, T b ) {
   *a += b;
 }
@@ -58,16 +70,21 @@ __device__ void div_scalar_op( T *a, T b ) {
 
 template <typename T>
 __device__ void fmod_scalar_op( T *a, T b ) {
-  *a = fmodf( *a, b );
+  *a = fmod( *a, b );
+}
+
+template <typename T>
+__device__ void pow_scalar_op( T *a, T b ) {
+  *a = pow( *a, b );
 }
 
 // Binary tensor operations
 
 template <typename T, typename U>
-using binary_op = void( T *a, U *b );
+using binary_op = void( T *a, const U *b );
 
 template <typename T, typename U, binary_op<T, U> op>
-__global__ void binary_op_kernel( T *data, U *other_data, int64_t nelem ) {
+__global__ void binary_op_kernel( T *data, const U *other_data, int64_t nelem ) {
   assert( gridDim.y == 1 && gridDim.z == 1 );
   assert( blockDim.y == 1 && blockDim.z == 1 );
 
@@ -81,28 +98,33 @@ __global__ void binary_op_kernel( T *data, U *other_data, int64_t nelem ) {
 }
 
 template <typename T, typename U>
-__device__ void add_op( T *a, U *b ) {
+__device__ void add_op( T *a, const U *b ) {
   *a += *b;
 }
 
 template <typename T, typename U>
-__device__ void sub_op( T *a, U *b ) {
+__device__ void sub_op( T *a, const U *b ) {
   *a -= *b;
 }
 
 template <typename T, typename U>
-__device__ void mult_op( T *a, U *b ) {
+__device__ void mult_op( T *a, const U *b ) {
   *a *= *b;
 }
 
 template <typename T, typename U>
-__device__ void div_op( T *a, U *b ) {
+__device__ void div_op( T *a, const U *b ) {
   *a /= *b;
 }
 
 template <typename T, typename U>
-__device__ void fmod_op( T *a, U *b ) {
+__device__ void fmod_op( T *a, const U *b ) {
   *a = fmod( *a, *b );
+}
+
+template <typename T, typename U>
+__device__ void pow_op( T *a, const U *b ) {
+  *a = pow( *a, *b );
 }
 
 // Unary operations

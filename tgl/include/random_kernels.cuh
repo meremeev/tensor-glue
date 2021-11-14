@@ -63,7 +63,7 @@ __device__ inline double normal_generator<double>( curandState_t *state ) {
 }
 
 template <typename T, random_generator<T> gen>
-__global__ void random_init_kernel( T *data, int64_t nelem, int64_t seed ) {
+__global__ void random_fill_kernel( T *data, int64_t nelem, int64_t seed ) {
   assert( gridDim.y == 1 && gridDim.z == 1 );
   assert( blockDim.y == 1 && blockDim.z == 1 );
 
