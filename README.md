@@ -1,10 +1,8 @@
 # Tensor-glue library
 
-Generic tensor library is intended to bridge a gap between CPU and GPU computational devices in heterogeneous applications. 
+Generic header-only tensor library, intended be use as a middle layer between GPU and CPU devices in heterogeneous applications. 
 
-Currently the library provides only one implementation based on CUDA Unified Memory - *ManagedTensor<T>* which provide smooth synchronization across GPU and CPU domains and across multiple GPU devices. This implementation is still WIP.
-
-Supported data types: *int8*, *int64*, *float*, *double*.
+Library provides template of tensor implementation based on CUDA Unified Memory - *ManagedTensor<T>* which provide smooth synchronization across GPU and CPU domains and across multiple GPU devices. Is supports all CUDA compatible types.
 
 ManageTensor implementation requires:
 - 64-bit host application.
@@ -18,10 +16,18 @@ More about CUDA Unified Memory:
 
 ### Usage
 
-Library is a header-only template library. This option require compilation of CUDA code as part of your application, and this lets you compile with options (PTX, compute capability, etc.) specific to your application.
-
 ```
 #include <managed_tensor.cuh>
 
-ManagedTensor<float> tgl::tensor( { 2, 3, 3, 4 }, true);
+tgl::ManagedTensor<float> tensor( { 2, 3, 3, 4 }, true);
 ```
+
+Library requires compilation of CUDA code as part of your application.
+
+### Documentation
+
+```
+$ cd <repo root>
+$ doxygen
+```
+Compiled documentation will be available in `doc` folder. Open `doc/index.html` with your browser. 
