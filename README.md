@@ -1,6 +1,6 @@
 # Tensor-glue library
 
-Generic header-only tensor library, intended be use as a middle layer between GPU and CPU devices in heterogeneous applications. 
+Generic header-only tensor library, intended be used as a middle layer between GPU and CPU devices in heterogeneous applications. 
 
 Library provides template of tensor implementation based on CUDA Unified Memory - *ManagedTensor<T>* which provide smooth synchronization across GPU and CPU domains and across multiple GPU devices. Is supports all CUDA compatible types.
 
